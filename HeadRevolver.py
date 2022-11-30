@@ -18,46 +18,34 @@ import time, hal
 #	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  US
 
 #Config
-File = "D:\Git\LinuxCNC-Sauter-HeadRevolver\sim.tbl"
+File = "/home/alex/linuxcnc/configs/sim.axis"
 
 pistonreturn = 1
 #HAL Setup
-c = hal.component("lubedude") #name that we will cal pins from in hal
+c = hal.component("AAA") #name that we will cal pins from in hal
 
 #Inputs 
-c.newpin("Hydraulik", hal.HAL_BIT, hal.HAL_IN)
+c.newpin("hydraulik", hal.HAL_BIT, hal.HAL_IN)
 c.newpin("pos1", hal.HAL_BIT, hal.HAL_IN)
 c.newpin("pos2", hal.HAL_BIT, hal.HAL_IN)
 c.newpin("pos3", hal.HAL_BIT, hal.HAL_IN)
 c.newpin("pos4", hal.HAL_BIT, hal.HAL_IN)
 
 #Outputs
-c.newpin("CoilA", hal.HAL_BIT, hal.HAL_OUT)
-c.newpin("CoilB", hal.HAL_BIT, hal.HAL_OUT)
-
-#Logic
-
-"""tool-prep-number
-tool-prep-loop
-tool-changed
-tool-change-loop
-tool-change"""
+c.newpin("coilA", hal.HAL_BIT, hal.HAL_OUT)
+c.newpin("coilB", hal.HAL_BIT, hal.HAL_OUT)
 
 
-
-c.newpin("ToolChangecmd", hal.HAL_BIT, hal.HAL_IN)
-c.newpin("ToolChanged", hal.HAL_BIT, hal.HAL_OUT)
-c.newpin("nextToolNo",hal.HAL_FLOAT, hal.HAL_IN)
-
-
-c.newpin("Fault", hal.HAL_BIT, hal.HAL_OUT)
-c.newpin("Reset", hal.HAL_BIT, hal.HAL_IN)
+c.newpin("fault", hal.HAL_BIT, hal.HAL_OUT)
+c.newpin("reset", hal.HAL_BIT, hal.HAL_IN)
+c.newpin("debug", hal.HAL_FLOAT, hal.HAL_OUT)
 
 c.ready()
 
-
 State = 0
-def getPosition():
+
+#functions
+def getPosition(): #returns Revolver Position returns 0 while turning
     if c.pos1 == 1:
         return 1
     elif c.pos2 == 1:
@@ -68,6 +56,8 @@ def getPosition():
          return 4
     else:
         return 0
+
+
 def extract_nbr(input_str):
     if input_str is None or input_str == '':
         return 0
@@ -78,7 +68,7 @@ def extract_nbr(input_str):
             out_number += ele
     return int(out_number) 
 
-def defineToolpos(toolnbr):
+def defineToolpos(toolnbr):  #finds Toolorientation on Revolver
     with open(File) as f:
         for line in f:
             data = line.strip()
@@ -88,39 +78,46 @@ def defineToolpos(toolnbr):
                 return extract_nbr(data[1][0])
                 break
 
-def wait(counter):
+def wait(counter):#wait for piston to return
     return counter + pistonreturn < time.time()
 
 while True:
-    if c.Hydraulik == 0: c.Fault = 1
-    if c.Reset == 1: c.Fault = 0
+	try:
+		c.debug = State
+		nextTool = hal.get_value("iocontrol.0.tool-prep-number")
+	
+		if c.hydraulik == 0: c.fault = 1
+		else:c.fault = 0
 
-    nextTool = c.nextToolNo
-    nextTool = defineToolpos(nextTool)
-    if c.ToolChangecmd == 1:
-        if nextTool != getPosition():
-            
-            c.ToolChanged = 0
-            while State == 0:
-                c.CoilA = 1
-                c.CoilB = 0
-                if getPosition() == 0:
-                    State = 1
 
-            while State == 1:
-                if getPosition != 0:
-                    State = 2
+		if hal.get_value("iocontrol.0.tool-prepare"):
+			preppedTool = defineToolpos(nextTool)
+			hal.set_p("iocontrol.0.tool-prepared","1")
 
-            while State == 2:
-                c.CoilA = 0
-                c.CoilB = 1
-                if wait(time.time()) == 1:
-                    State = 3
-            if State == 3:
-                c.CoilA = 0
-                c.CoilB = 0
-                State = 0
-                c.ToolChanged = 1
-                
-    
+		if hal.get_value("iocontrol.0.tool-change") == 1:
+			if preppedTool != getPosition():
+				while State == 0:
+					c.CoilA = 1
+					c.CoilB = 0
+					if getPosition() == 0:
+						State = 1
+				c.debug = State
+				while State == 1:
+					if getPosition != 0:
+						State = 2
+				c.debug = State
+				while State == 2:
+					c.CoilA = 0
+					c.CoilB = 1
+					if wait(time.time()) == 1:
+						State = 3
+				c.debug = State
+				if State == 3:
+					c.CoilA = 0
+					c.CoilB = 0
+					State = 0
+					hal.set_p("iocontrol.0.tool-changed","1")
+					c.debug = State
+	except:
+		pass
 
