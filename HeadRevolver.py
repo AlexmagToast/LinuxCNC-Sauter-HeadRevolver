@@ -22,7 +22,7 @@ File = "/home/alex/linuxcnc/configs/sim.axis"
 
 pistonreturn = 1
 #HAL Setup
-c = hal.component("AAA") #name that we will cal pins from in hal
+c = hal.component("Sauter") #name that we will cal pins from in hal
 
 #Inputs 
 c.newpin("hydraulik", hal.HAL_BIT, hal.HAL_IN)
@@ -74,7 +74,7 @@ def defineToolpos(toolnbr):  #finds Toolorientation on Revolver
             data = line.strip()
             data = data.split(" ",1)
             if toolnbr == extract_nbr(data[0]):
-                data = data[1].split("Q",1)
+                data = data[1].split("R",1)
                 return extract_nbr(data[1][0])
                 break
 
