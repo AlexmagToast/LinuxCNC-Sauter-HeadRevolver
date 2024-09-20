@@ -115,7 +115,7 @@ while True:
 					if getPosition() == 0:
 						State = 1
 					time.sleep(0.1)
-				c.debug = State
+					c.debug = State
 				while State == 1: #Start turning to new Position and wait for reaching new Position
 					start_time = time.time()  
 					time.sleep(1.25)         
@@ -123,14 +123,14 @@ while True:
 						State = 2
 					elif time.time() - start_time > 5: # return to Start State if the Toolhead fails to reach Position after 5 seconds
 						State = 0
-				c.debug = State
+					c.debug = State
 				while State == 2:
 					c.coilA = 0
 					c.coilB = 1
 					time.sleep(1.25)
 					State = 3
 					
-				c.debug = State
+					c.debug = State
 				
 				if State == 3:
 					c.coilA = 0
